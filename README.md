@@ -47,7 +47,7 @@ crann.set({active: true}) // Will notify all connected contexts that active is n
 crann.set({name: 'ContentScript'}, 'instancekey'); // Or set for a particular instance if you like
 ```
 
-### Next, connect to your Crann instance from any context you like -- eg. content scripts
+### Then, connect to your Crann instance from any context you like -- eg. content scripts
 
 ```typescript
 import {connect} from 'crann';
@@ -66,7 +66,7 @@ subscribe((changes) => {
 
 ```
 
-### Third, Persist state!
+### Finally, Persist state!
 
 You can persist items so that they will survive a refresh or context closure.
 
