@@ -9,7 +9,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
     private defaultCommonState: DerivedCommonState<TConfig>;
     private defaultInstanceState: DerivedInstanceState<TConfig>;
     private commonState: DerivedCommonState<TConfig>;
-    private stateChangeListeners: Array<(state: (DerivedCommonState<TConfig>) | (DerivedCommonState<TConfig> & DerivedInstanceState<TConfig>), changes: Partial<DerivedCommonState<TConfig> & DerivedInstanceState<TConfig>>, key?: string) => void> = [];
+    private stateChangeListeners: Array<(state: (DerivedInstanceState<TConfig> | DerivedState<TConfig>), changes: Partial<DerivedCommonState<TConfig> & DerivedInstanceState<TConfig>>, key?: string) => void> = [];
     private storagePrefix = 'crann_';
     private post: (message: any, contextOrKey: string, location?: Partial<AgentLocation>) => void = () => { };
 
@@ -95,11 +95,11 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
         this.notify({});
     }
 
-    public subscribe(listener: (state: (DerivedCommonState<TConfig>) | (DerivedInstanceState<TConfig> & DerivedCommonState<TConfig>), changes: Partial<DerivedInstanceState<TConfig> & DerivedCommonState<TConfig>>, key?: string) => void): void {
+    public subscribe(listener: (state: (DerivedInstanceState<TConfig> | DerivedState<TConfig>), changes: Partial<DerivedInstanceState<TConfig> & DerivedCommonState<TConfig>>, key?: string) => void): void {
         this.stateChangeListeners.push(listener);
     }
 
-    private notify(changes: Partial<DerivedCommonState<TConfig> & DerivedInstanceState<TConfig>>, key?: string): void {
+    private notify(changes: Partial<DerivedState<TConfig>>, key?: string): void {
         const state = key ? this.get(key) : this.get();
         this.stateChangeListeners.forEach(listener => listener(state, changes, key));
         if (key) {
@@ -112,9 +112,9 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
         }
     }
 
-    public get(): DerivedCommonState<TConfig>;
+    public get(): DerivedState<TConfig>;
     public get(key: string): DerivedInstanceState<TConfig> & DerivedCommonState<TConfig>;
-    public get(key?: string): ((DerivedInstanceState<TConfig> & DerivedCommonState<TConfig>) | DerivedCommonState<TConfig>) {
+    public get(key?: string): (DerivedCommonState<TConfig> | DerivedState<TConfig>) {
         if (!key) {
             return { ...this.commonState, ...{} as DerivedInstanceState<TConfig> };
         }
