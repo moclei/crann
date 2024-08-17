@@ -11,8 +11,6 @@ Crann synchronizes state in Web Extensions, with full Typescript support.
 - React to state! Better coding patterns.
 - Optionally persist any value to storage (local or session) via config.
 
-Examples: Coming soon.
-
 ### First, create a Crann instance
 
 Crann needs a service worker to coordinate state and access
