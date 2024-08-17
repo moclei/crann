@@ -13,7 +13,7 @@ export function deepEqual(a: any, b: any): boolean {
 
     for (let i = 0; i < keysA.length; i++) {
         const key = keysA[i];
-        if (key !== keysB[i] || !this.deepEqual(a[key], b[key])) return false;
+        if (key !== keysB[i] || !deepEqual(a[key], b[key])) return false;
     }
     return true;
 }
