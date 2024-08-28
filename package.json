@@ -50,6 +50,6 @@
   "homepage": "https://github.com/moclei/crann#readme",
   "dependencies": {
     "crann": "^1.0.9",
-    "porter-source": "^1.0.21"
+    "porter-source": "^1.0.22"
   }
 }
