@@ -15,7 +15,12 @@
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true
+        "forceConsistentCasingInFileNames": true,
+        "paths": {
+            "porter-source": [
+                "../porter-source/dist"
+            ],
+        },
     },
     "include": [
         "src/**/*"
