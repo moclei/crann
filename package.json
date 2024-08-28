@@ -1,6 +1,6 @@
 {
   "name": "crann",
-  "version": "1.0.9",
+  "version": "1.0.12",
   "description": "",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
