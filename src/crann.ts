@@ -1,17 +1,18 @@
 import browser from 'webextension-polyfill';
-import { DerivedInstanceState, DerivedCommonState, ConfigItem, DerivedState, Partition, CrannAgent, StateSubscriber } from './model/crann.model';
-import { source, } from 'porter-source';
+import { DerivedInstanceState, DerivedCommonState, ConfigItem, DerivedState, Partition } from './model/crann.model';
+import { source, getMetadata, getKey, getTarget } from 'porter-source';
 import { deepEqual } from './utils/deepEqual';
-import { AgentLocation, AgentMetadata } from 'porter-source/dist/types/porter.model';
+import { AgentLocation, AgentMetadata, Message, PorterContext, PostTarget } from 'porter-source/dist/types/porter.model';
 
 export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
+    private static instance: Crann<any> | null = null;
     private instances: Map<string, DerivedInstanceState<TConfig>> = new Map();
     private defaultCommonState: DerivedCommonState<TConfig>;
     private defaultInstanceState: DerivedInstanceState<TConfig>;
     private commonState: DerivedCommonState<TConfig>;
-    private stateChangeListeners: Array<(state: (DerivedInstanceState<TConfig> | DerivedState<TConfig>), changes: Partial<DerivedCommonState<TConfig> & DerivedInstanceState<TConfig>>, key?: string) => void> = [];
+    private stateChangeListeners: Array<(state: (DerivedInstanceState<TConfig> | DerivedState<TConfig>), changes: Partial<DerivedCommonState<TConfig> & DerivedInstanceState<TConfig>>, agent?: AgentMetadata) => void> = [];
     private storagePrefix = 'crann_';
-    private post: (message: any, contextOrKey: string, location?: Partial<AgentLocation>) => void = () => { };
+    private post: (message: Message<any>, target?: PostTarget) => void = () => { };
 
     constructor(private config: TConfig, storagePrefix?: string) {
         console.log('Crann constructor');
@@ -29,6 +30,14 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
             });
         });
         this.storagePrefix = storagePrefix ?? this.storagePrefix;
+    }
+
+
+    public static getInstance<TConfig extends Record<string, ConfigItem<any>>>(config: TConfig, storagePrefix?: string): Crann<TConfig> {
+        if (!Crann.instance) {
+            Crann.instance = new Crann(config, storagePrefix);
+        }
+        return Crann.instance;
     }
 
     private async addInstance(key: string): Promise<void> {
@@ -95,15 +104,17 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
         this.notify({});
     }
 
-    public subscribe(listener: (state: (DerivedInstanceState<TConfig> | DerivedState<TConfig>), changes: Partial<DerivedInstanceState<TConfig> & DerivedCommonState<TConfig>>, key?: string) => void): void {
+    public subscribe(listener: (state: (DerivedInstanceState<TConfig> | DerivedState<TConfig>), changes: Partial<DerivedInstanceState<TConfig> & DerivedCommonState<TConfig>>, agent?: AgentMetadata) => void): void {
         this.stateChangeListeners.push(listener);
     }
 
     private notify(changes: Partial<DerivedState<TConfig>>, key?: string): void {
+        const agentMeta = key ? getMetadata(key) : undefined;
+        const target = agentMeta ? getTarget(agentMeta) : undefined;
         const state = key ? this.get(key) : this.get();
-        this.stateChangeListeners.forEach(listener => listener(state, changes, key));
-        if (key) {
-            this.post({ action: 'stateUpdate', payload: { state: changes } }, key);
+        this.stateChangeListeners.forEach(listener => listener(state, changes, agentMeta || undefined));
+        if (target) {
+            this.post({ action: 'stateUpdate', payload: { state: changes } }, target);
         } else {
             // for every key of this.instances, post the state update to the corresponding key
             this.instances.forEach((_, key) => {
@@ -119,6 +130,18 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
             return { ...this.commonState, ...{} as DerivedInstanceState<TConfig> };
         }
         return { ...this.commonState, ...this.instances.get(key) };
+    }
+
+    public findInstance(context: PorterContext, location: AgentLocation): string | null {
+        // Todo: This feels like too-tight coupleing between porter and crann. Should be a better way.
+        const searchKey = getKey({ context, ...location })
+        for (const [key, instance] of this.instances) {
+            if (key === searchKey) {
+                console.log('Crann found instance for key: ', key);
+                return key
+            }
+        }
+        return null;
     }
 
     public async set(state: Partial<DerivedCommonState<TConfig>>): Promise<void>
@@ -189,7 +212,19 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
 }
 
 
-export function create<TConfig extends Record<string, ConfigItem<any>>>(config: TConfig, storagePrefix?: string): Crann<TConfig> {
-    return new Crann(config, storagePrefix);
+export function create<TConfig extends Record<string, ConfigItem<any>>>(config: TConfig, storagePrefix?: string): [
+    (key?: string) => (DerivedState<TConfig>),
+    (state: Partial<DerivedInstanceState<TConfig> & DerivedCommonState<TConfig>>, key?: string) => Promise<void>,
+    (listener: (state: (DerivedInstanceState<TConfig> | DerivedState<TConfig>), changes: Partial<DerivedInstanceState<TConfig> & DerivedCommonState<TConfig>>, agent?: AgentMetadata) => void) => void,
+    (context: PorterContext, location: AgentLocation) => string | null,
+] {
+    const instance = Crann.getInstance(config, storagePrefix);
+    return [
+        instance.get.bind(instance),
+        instance.set.bind(instance),
+        instance.subscribe.bind(instance),
+        instance.findInstance.bind(instance),
+    ];
 }
+
 
